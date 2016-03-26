@@ -15,7 +15,7 @@ namespace SecureSender
     {
         static void Main(string[] args)
         {
-            X509Certificate2 ServerBsPublicCert = new X509Certificate2("c:\\mike.cer");
+            X509Certificate2 ServerBsPublicCert = new X509Certificate2("c:\\ServerB.cer");
 
             try
             {
@@ -23,7 +23,7 @@ namespace SecureSender
 
                 var envelope = Encryptor.EncryptAndEnvelope(data, ServerBsPublicCert);
 
-                Encryptor.SendSecureData(envelope, "http://localhost:13848/api/Data");
+                Encryptor.SendSecureData(envelope, "http://ServerB/api/Data");
 
                 Console.ReadLine();
 

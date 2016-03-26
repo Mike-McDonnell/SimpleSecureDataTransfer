@@ -19,10 +19,9 @@ namespace SSDT
                 byte[] encryptedData = Encrypt(data, Aes.Key, Aes.IV);
                 byte[] encryptedKey = EncryptKey(Aes.Key, publicCertificate.PublicKey.Key);
 
-                return new Envelope() { enc_data = encryptedData, enc_key = encryptedKey, enc_iv = Aes.IV, enc_type = Aes.Mode, enc_ref = publicCertificate.Subject };
+                return new Envelope() { enc_data = encryptedData, enc_key = encryptedKey, enc_iv = Aes.IV, enc_type = Aes.Mode, enc_ref = publicCertificate.Thumbprint };
             }
         }
-
 
         public static async Task<HttpResponseMessage> SendSecureData(Envelope envelope, string Url)
         {
@@ -56,4 +55,61 @@ namespace SSDT
             }
         }
     }
+
+    public class Decryptor
+    {
+        public static string DeyryptEnvelope(Envelope envelope, X509Certificate2 privateCertificate)
+        {
+            using (Aes aes = new AesCryptoServiceProvider())
+            {
+                aes.IV = envelope.enc_iv;
+
+                // Decrypt the session key
+                aes.Key = DecryptKey(envelope.enc_key, privateCertificate.PrivateKey);
+
+                // Decrypt the Data
+                using (MemoryStream plaintext = new MemoryStream())
+                {
+                    using (CryptoStream cs = new CryptoStream(plaintext, aes.CreateDecryptor(), CryptoStreamMode.Write))
+                    {
+                        cs.Write(envelope.enc_data, 0, envelope.enc_data.Length);
+                        cs.Close();
+
+                        return Encoding.UTF8.GetString(plaintext.ToArray());
+                    }
+                }
+            }
+        }
+
+        private static byte[] DecryptKey(byte[] encryptedKey, AsymmetricAlgorithm AsymetricPrivateKey)
+        {
+            RSAPKCS1KeyExchangeDeformatter keyDeformatter = new RSAPKCS1KeyExchangeDeformatter(AsymetricPrivateKey);
+            return keyDeformatter.DecryptKeyExchange(encryptedKey);
+        }
+    }
+
+    public class CertifcateUtilities
+    {
+        public static X509Certificate2 GetCertificateFromStore(string certThumbprint, StoreLocation storelocation)
+        {
+
+            X509Store store = new X509Store(storelocation);
+            try
+            {
+                store.Open(OpenFlags.ReadOnly);
+
+                var sCertifcates = store.Certificates.Find(X509FindType.FindByThumbprint, certThumbprint, false);
+
+                return sCertifcates[0];
+
+            }
+            finally
+            {
+                store.Close();
+            }
+
+        }
+
+    }
+
 }
